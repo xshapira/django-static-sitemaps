@@ -11,8 +11,7 @@ def _lazy_load(class_path):
         raise ImproperlyConfigured('Error importing module %s: "%s"' %
                                    (module, e))
     try:
-        instance = getattr(mod, attr)
-        return instance
+        return getattr(mod, attr)
     except AttributeError:
         raise ImproperlyConfigured('Module "%s" does not define a "%s" '
                                    'class.' % (module, attr))

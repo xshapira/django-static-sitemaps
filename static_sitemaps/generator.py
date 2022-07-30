@@ -56,7 +56,7 @@ class SitemapGenerator(object):
             url += '/'
         if not url.startswith(('http://', 'https://')):
             protocol = conf.FORCE_PROTOCOL or 'http'
-            prefix = '%s://' % protocol
+            prefix = f'{protocol}://'
             if url.startswith('/'):
                 from django.contrib.sites.models import Site
                 url = prefix + Site.objects.get_current().domain + url
@@ -105,10 +105,7 @@ class SitemapGenerator(object):
                 if conf.USE_GZIP:
                     filename += '.gz'
 
-                parts.append({
-                    'location': '%s%s' % (baseurl, filename),
-                    'lastmod': lastmod
-                })
+                parts.append({'location': f'{baseurl}{filename}', 'lastmod': lastmod})
 
         path = os.path.join(conf.ROOT_DIR, 'sitemap.xml')
         self.out('Writing index file.', 2)
@@ -128,13 +125,13 @@ class SitemapGenerator(object):
             try:
                 sitemap_url = reverse('static_sitemaps_index')
             except NoReverseMatch:
-                sitemap_url = "%ssitemap.xml" % baseurl
+                sitemap_url = f"{baseurl}sitemap.xml"
 
             self.out('Pinging google...', 2)
             ping_google(sitemap_url)
 
     def write_page(self, site, page, filename):
-        self.out('Writing sitemap %s.' % filename, 2)
+        self.out(f'Writing sitemap {filename}.', 2)
         old_page_md5 = None
         urls = []
 
@@ -150,18 +147,17 @@ class SitemapGenerator(object):
                     urls.extend(site().get_urls(page, rs, protocol=conf.MOCK_SITE_PROTOCOL))
                 else:
                     urls.extend(site().get_urls(page, protocol=conf.FORCE_PROTOCOL))
+            elif conf.MOCK_SITE:
+                urls.extend(site.get_urls(page, rs, protocol=conf.MOCK_SITE_PROTOCOL))
             else:
-                if conf.MOCK_SITE:
-                    urls.extend(site.get_urls(page, rs, protocol=conf.MOCK_SITE_PROTOCOL))
-                else:
-                    urls.extend(site.get_urls(page, protocol=conf.FORCE_PROTOCOL))
+                urls.extend(site.get_urls(page, protocol=conf.FORCE_PROTOCOL))
         except EmptyPage:
-            self.out("Page %s empty" % page)
+            self.out(f"Page {page} empty")
         except PageNotAnInteger:
             self.out("No page '%s'" % page)
 
         lastmods = [lastmod for lastmod in [u.get('lastmod') for u in urls] if lastmod is not None]
-        file_lastmod = max(lastmods) if len(lastmods) > 0 else None
+        file_lastmod = max(lastmods, default=None)
         path = os.path.join(conf.ROOT_DIR, filename)
         template = getattr(site, 'sitemap_template', 'sitemap.xml')
 
@@ -192,7 +188,7 @@ class SitemapGenerator(object):
             else:
                 # GZIP with python gzip lib
                 try:
-                    gzipped_path = '%s.gz' % path
+                    gzipped_path = f'{path}.gz'
                     if self.storage.exists(gzipped_path):
                         self.storage.delete(gzipped_path)
 
@@ -202,6 +198,6 @@ class SitemapGenerator(object):
                         f.write(output.encode('utf-8'))
                     self.storage.save(gzipped_path, ContentFile(buf.getvalue()))
                 except OSError:
-                    self.out("Compress %s file error" % path)
+                    self.out(f"Compress {path} file error")
 
         return file_lastmod
